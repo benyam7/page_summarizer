@@ -57,15 +57,15 @@ class Website:
 
     # CRITICAL CHANGE: __scrape must be an async method that can be awaited
     # It should not call asyncio.run() itself.
-    async def scrape_async(self) -> None: # Renamed and made async
-        """
-        Scrape the website using pyppeteer.
-        """
-        browser = None # Initialize to ensure it's defined in finally
+    async def scrape_async(self) -> None:
+        browser = None
         page = None
         try:
             browser = await launch(
                 headless=True,
+                handleSIGINT=False,
+                handleSIGTERM=False,
+                handleSIGHUP=False,
                 args=[
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
@@ -74,13 +74,31 @@ class Website:
                     '--no-first-run',
                     '--no-zygote',
                     '--single-process',
-                    '--disable-extensions'
+                    '--disable-extensions',
+                    '--disable-web-security',
+                    '--disable-features=IsolateOrigins,site-per-process',
+                    '--no-experiments',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--disable-canvas-aa',
+                    '--disable-2d-canvas-clip-aa',
+                    '--disable-gl-drawing-for-tests',
+                    '--enable-features=NetworkService,NetworkServiceInProcess',
+                    '--dns-servers=8.8.8.8,8.8.4.4',  # Use Google's DNS servers
+                    '--host-resolver-rules="MAP * 0.0.0.0 , EXCLUDE localhost"',
+                    '--proxy-server="direct://"',
+                    '--proxy-bypass-list=*'
                 ],
                 ignoreHTTPSErrors=True,
-                executablePath='/usr/bin/chromium'  # Use the system Chromium we installed
+                executablePath='/usr/bin/chromium'
             )
             page = await browser.newPage()
             await stealth(page)
+
+            # Set timeouts using correct property names
+            page.defaultNavigationTimeout = 60000  # 60 seconds
+            page.defaultTimeout = 60000  # 60 seconds for other operations
 
             user_agents: List[str] = [
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
@@ -89,26 +107,46 @@ class Website:
             ]
             ua = user_agents[randint(0, len(user_agents) - 1)]
             await page.setUserAgent(ua)
-            await page.setRequestInterception(True)
 
-            # Be careful with lambda and ensure_future in this context.
-            # It's often cleaner to define the handler separately.
-            async def intercept_request(req):
-                if req.resourceType == "stylesheet":
-                    await req.abort()
-                else:
-                    await req.continue_()
-            page.on("request", intercept_request)
+            # Set viewport to a reasonable desktop size
+            await page.setViewport({'width': 1280, 'height': 800})
 
-            await page.goto(self.__url, {"timeout": 60000}) # Use self.__url directly
+            await page.setRequestInterception(False)
+            
+            try:
+                # First attempt with networkidle0
+                await page.goto(
+                    self.__url,
+                    {
+                        "waitUntil": "networkidle0",
+                        "timeout": 60000  # 60 seconds timeout
+                    }
+                )
+            except Exception as nav_error:
+                console.print(f"[yellow]First navigation attempt failed, retrying with different settings: {nav_error}[/yellow]")
+                # If first attempt fails, try again with different settings
+                await page.goto(
+                    self.__url,
+                    {
+                        "waitUntil": "domcontentloaded",
+                        "timeout": 60000
+                    }
+                )
+
+            # Wait for body with increased timeout
+            await page.waitForSelector('body', {"timeout": 30000})
+            
+            # Wait a bit for dynamic content
+            await asyncio.sleep(2)
+            
             self.__title = await page.title()
             self.__text = await page.evaluate('() => document.body.innerText')
+
         except Exception as e:
             console.print(f"[red]Error scraping {self.__url}: {e}[/red]")
-            # Propagate the error or set text to an error message
             self.__title = "Error"
             self.__text = f"Could not scrape content: {str(e)}"
-            raise # Re-raise the exception so FastAPI can catch it as a server error
+            raise
         finally:
             if page:
                 await page.close()

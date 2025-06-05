@@ -1,15 +1,12 @@
 # Use a base image with Python
 FROM python:3.10-slim
 
-WORKDIR /app
-
-# Install system dependencies needed for Pyppeteer/Chromium
-# This is a common set, might need adjustments based on the base image and exact errors
+# Install required system packages including DNS tools
 RUN apt-get update && apt-get install -y \
     chromium \
-    # Or use a specific chromium package if 'chromium' is too new/old or not found
-    # e.g., chromium-browser on older Debian/Ubuntu
-    # Add other dependencies Puppeteer might need:
+    dnsutils \
+    iputils-ping \
+    net-tools \
     libatk1.0-0 libatk-bridge2.0-0 libcups2 libdbus-1-3 \
     libdrm2 libgbm1 libgtk-3-0 libnspr4 libnss3 \
     libpango-1.0-0 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 \
@@ -23,6 +20,11 @@ RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
     && mkdir -p /home/pptruser/Downloads \
     && chown -R pptruser:pptruser /home/pptruser \
     && chown -R pptruser:pptruser /app
+
+# Set DNS configuration
+COPY resolv.conf /etc/resolv.conf
+
+WORKDIR /app
 
 # Copy your requirements and install Python packages
 COPY requirements.txt .
