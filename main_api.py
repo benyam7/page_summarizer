@@ -78,14 +78,12 @@ class Website:
                     '--disable-web-security',
                     '--disable-features=IsolateOrigins,site-per-process',
                     '--no-experiments',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
                     '--disable-accelerated-2d-canvas',
                     '--disable-canvas-aa',
                     '--disable-2d-canvas-clip-aa',
                     '--disable-gl-drawing-for-tests',
                     '--enable-features=NetworkService,NetworkServiceInProcess',
-                    '--dns-servers=8.8.8.8,8.8.4.4',  # Use Google's DNS servers
+                    '--dns-servers=8.8.8.8,8.8.4.4',
                     '--host-resolver-rules="MAP * 0.0.0.0 , EXCLUDE localhost"',
                     '--proxy-server="direct://"',
                     '--proxy-bypass-list=*'
@@ -188,7 +186,8 @@ class LlmSummarizer:
     @property
     def openai(self) -> OpenAI:
         if self.__openai is None:
-            self.__openai = OpenAI(base_url='http://localhost:11434/v1', api_key='ollama')
+            # http://host.docker.internal:11434/v1 - is a special DNS name that resolves to the host machine's IP from within the container. (if u are using ollama on Mac)
+            self.__openai = OpenAI(base_url='http://host.docker.internal:11434/v1', api_key='ollama')
         return self.__openai
     #endregion
 

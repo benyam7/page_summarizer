@@ -15,6 +15,9 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
+# Create app directory
+WORKDIR /app
+
 # Create a non-root user
 RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
     && mkdir -p /home/pptruser/Downloads \
@@ -23,8 +26,6 @@ RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
 
 # Set DNS configuration
 COPY resolv.conf /etc/resolv.conf
-
-WORKDIR /app
 
 # Copy your requirements and install Python packages
 COPY requirements.txt .
@@ -45,6 +46,5 @@ USER pptruser
 # Expose the port FastAPI will run on
 EXPOSE 8000
 
-# Command to run your application
-# Use 0.0.0.0 to bind to all interfaces, essential for Docker
+# Command to run your application - bind to all interfaces
 CMD ["uvicorn", "main_api:app", "--host", "0.0.0.0", "--port", "8000"]
