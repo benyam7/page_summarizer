@@ -2,7 +2,7 @@
 import dotenv
 import asyncio
 import os
-os.environ['PYPPETEER_CHROMIUM_REVISION'] = '1263111' # Keep this if it works for your deployment
+# os.environ['PYPPETEER_CHROMIUM_REVISION'] = '1263111' # Keep this if it works for your deployment
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware # For allowing Next.js to call
@@ -58,39 +58,25 @@ class Website:
     # CRITICAL CHANGE: __scrape must be an async method that can be awaited
     # It should not call asyncio.run() itself.
     async def scrape_async(self) -> None:
+        console.print("Started scraping")
         browser = None
         page = None
         try:
             browser = await launch(
-                headless=True,
-                handleSIGINT=False,
-                handleSIGTERM=False,
-                handleSIGHUP=False,
-                args=[
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-gpu',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--single-process',
-                    '--disable-extensions',
-                    '--disable-web-security',
-                    '--disable-features=IsolateOrigins,site-per-process',
-                    '--no-experiments',
-                    '--disable-accelerated-2d-canvas',
-                    '--disable-canvas-aa',
-                    '--disable-2d-canvas-clip-aa',
-                    '--disable-gl-drawing-for-tests',
-                    '--enable-features=NetworkService,NetworkServiceInProcess',
-                    '--dns-servers=8.8.8.8,8.8.4.4',
-                    '--host-resolver-rules="MAP * 0.0.0.0 , EXCLUDE localhost"',
-                    '--proxy-server="direct://"',
-                    '--proxy-bypass-list=*'
-                ],
-                ignoreHTTPSErrors=True,
-                executablePath='/usr/bin/chromium'
-            )
+                        headless=True,
+                        handleSIGINT=False,
+                        handleSIGTERM=False,
+                        handleSIGHUP=False,
+                        args=[
+                            '--no-sandbox',
+                            '--disable-setuid-sandbox',
+                            '--disable-dev-shm-usage', # Often needed in limited resource environments
+                            '--disable-gpu',           # Usually not needed for headless
+                            # Add other essential args only if proven necessary
+                        ],
+                        # ignoreHTTPSErrors=True, # Be cautious with this in production
+                        executablePath='/usr/bin/chromium' # This is good
+                    )
             page = await browser.newPage()
             await stealth(page)
 
@@ -147,8 +133,10 @@ class Website:
             raise
         finally:
             if page:
+                console.print("Closing page")
                 await page.close()
             if browser:
+                console.print("Closing browser")
                 await browser.close()
 
     # The constructor now needs to be async or call an async method
@@ -187,6 +175,8 @@ class LlmSummarizer:
     def openai(self) -> OpenAI:
         if self.__openai is None:
             # http://host.docker.internal:11434/v1 - is a special DNS name that resolves to the host machine's IP from within the container. (if u are using ollama on Mac)
+            # uncomment the line below if u are using ollama on Mac
+            print("Started completion api ")
             self.__openai = OpenAI(base_url='http://host.docker.internal:11434/v1', api_key='ollama')
         return self.__openai
     #endregion
@@ -256,6 +246,7 @@ class LlmSummarizer:
             # or use an async OpenAI client if available and you want full async.
             # For simplicity with FastAPI, running sync SDK call in threadpool is common.
             loop = asyncio.get_event_loop()
+            console.print("Started completion api ")
             response: ChatCompletion = await loop.run_in_executor(
                 None, # Uses default ThreadPoolExecutor
                 lambda: self.openai.chat.completions.create(
@@ -265,6 +256,7 @@ class LlmSummarizer:
                     max_tokens=1024, # Increased for potentially longer summaries
                 )
             )
+            console.print("Completed completion api ")
             return response.choices[0].message.content
         except Exception as e:
             console.print(f"[red]Error summarizing {website.url}: {e}[/red]")

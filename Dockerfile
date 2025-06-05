@@ -25,7 +25,7 @@ RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
     && chown -R pptruser:pptruser /app
 
 # Set DNS configuration
-COPY resolv.conf /etc/resolv.conf
+# COPY resolv.conf /etc/resolv.conf
 
 # Copy your requirements and install Python packages
 COPY requirements.txt .
