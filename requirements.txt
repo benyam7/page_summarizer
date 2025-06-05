@@ -6,3 +6,5 @@ openai
 pyppeteer
 pyppeteer_stealth
 rich
+anthropic>=0.20.0
+google-generativeai

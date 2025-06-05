@@ -6,15 +6,17 @@ import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware # For allowing Next.js to call
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from rich.console import Console
 from rich.markdown import Markdown # You might not use Rich directly in API responses
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 from openai.types.chat import ChatCompletion
-from typing import Optional, Union, Dict, List
+from typing import Optional, Union, Dict, List, Literal
 from pyppeteer import launch
 from pyppeteer_stealth import stealth
 from random import randint
+import google.generativeai as genai # For Google Gemini
+
 
 console = Console() # For server-side logging
 
@@ -157,158 +159,270 @@ class Website:
         return f"Website(url={self.url}, title=\"{self.title}\")"
 
 
+LLMProvider = Literal["openai", "ollama", "anthropic", "google", "groq"]  
+
 class LlmSummarizer:
-    # ... (LlmSummarizer class remains largely the same) ...
-    #region Config
-    __config: Config
-    @property
-    def config(self) -> Config:
-        if not hasattr(self, '_LlmSummarizer__config') or self.__config is None:
-            raise ValueError("Config not initialized")
-        return self.__config
-    #endregion
+    def __init__(self, global_config: Config):
+        self.global_config = global_config
+        # For Google, API key is configured globally via the SDK usually
+        # but we'll accept it from the user for max flexibility
 
-    #region OpenAI
-    __openai: OpenAI = None
 
-    @property
-    def openai(self) -> OpenAI:
-        if self.__openai is None:
-            # http://host.docker.internal:11434/v1 - is a special DNS name that resolves to the host machine's IP from within the container. (if u are using ollama on Mac)
-            # uncomment the line below if u are using ollama on Mac
-            print("Started completion api ")
-            self.__openai = OpenAI(base_url='http://host.docker.internal:11434/v1', api_key='ollama')
-        return self.__openai
-    #endregion
 
-    #region System behavior
-    __system_behavior: Dict[str, str] = None
-    @property
-    def system_behavior(self) -> Dict[str, str]:
-        if self.__system_behavior is None:
-            self.__system_behavior = {
-                "role": "system",
-                "content": (
-                    "You are an assistant that analyzes the contents of a website "
-                    "and provides a short summary, ignoring the text that might be navigation-related."
-                    "Respond in markdown and be concise."
-                )
-            }
-        return self.__system_behavior
-    #endregion
+    def _get_system_prompt(self) -> Dict[str, str]:
+        return {
+            "role": "system",
+            "content": (
+                "You are an assistant that analyzes the contents of a website "
+                "and provides a short summary, ignoring the text that might be navigation-related. "
+                "Respond in markdown and be concise."
+            )
+        }
 
-    #region user_prompt_for
-    def user_prompt_for(self, website: Website) -> Dict[str, str]:
-        user_prompt_content: str = (
-            f"You are looking at the website titled \"{website.title}\". "
-            "The content of this website is as follows; "
-            "please provide a short summary of this website in markdown. "
-            "If it includes news or announcements, then summarize these too.\n\n"
-            f"\"\"\"\n{website.text}\n\"\"\"\n\n"
-        )
+    def _get_user_prompt(self, website: Website) -> Dict[str, str]:
         return {
             "role": "user",
-            "content": user_prompt_content
-        }
-    #endregion
-
-    #region messages_for
-    def messages_for(self, website: Website) -> List[Dict[str, str]]:
-        return [
-            self.system_behavior,
-            self.user_prompt_for(website)
-        ]
-    #endregion
-
-    #region summarize
-    # This method now needs to be async if Website.create is async
-    async def summarize(self, website_url_or_instance: Union[Website, str]) -> Optional[str]:
-        website: Website
-        if isinstance(website_url_or_instance, str):
-            try:
-                # Use the async factory method
-                website = await Website.create(website_url_or_instance)
-            except Exception as e:
-                console.print(f"[red]Failed to scrape website {website_url_or_instance}: {e}[/red]")
-                raise HTTPException(status_code=500, detail=f"Failed to scrape website: {str(e)}")
-
-        else:
-            website = website_url_or_instance
-        
-        if "Could not scrape content" in website.text: # Check if scraping failed
-             raise HTTPException(status_code=500, detail=f"Failed to scrape website: {website.url}")
-
-
-        messages: List[Dict[str, str]] = self.messages_for(website)
-        try:
-            # The OpenAI client's create method might be synchronous by default
-            # If you're using openai >v1.0, it's sync. You can run it in a thread pool executor
-            # or use an async OpenAI client if available and you want full async.
-            # For simplicity with FastAPI, running sync SDK call in threadpool is common.
-            loop = asyncio.get_event_loop()
-            console.print("Started completion api ")
-            response: ChatCompletion = await loop.run_in_executor(
-                None, # Uses default ThreadPoolExecutor
-                lambda: self.openai.chat.completions.create(
-                    model="gemma3:4b",
-                    messages=messages,
-                    temperature=0.2,
-                    max_tokens=1024, # Increased for potentially longer summaries
-                )
+            "content": (
+                f"You are looking at the website titled \"{website.title}\". "
+                "The content of this website is as follows; "
+                "please provide a short summary of this website in markdown. "
+                "If it includes news or announcements, then summarize these too.\n\n"
+                f"\"\"\"\n{website.text}\n\"\"\"\n\n"
             )
-            console.print("Completed completion api ")
-            return response.choices[0].message.content
+        }
+        
+    async def summarize(
+        self,
+        website_url: str,
+        llm_provider: LLMProvider,
+        api_key: Optional[str] = None,
+        model_name: Optional[str] = None,
+        base_url: Optional[str] = None
+    ) -> Optional[str]:
+        print("Started summarization i.e hitting the LLM")
+        try:
+            website = await Website.create(website_url)
         except Exception as e:
-            console.print(f"[red]Error summarizing {website.url}: {e}[/red]")
-            raise HTTPException(status_code=500, detail=f"Error during summarization: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to scrape website: {str(e)}")
 
-    #endregion
-    
-    def __init__(self, config: Config) -> None:
-        self.__config = config
+        if "Could not scrape content" in website.text:
+             raise HTTPException(status_code=500, detail=f"Failed to process website content from: {website.url}")
+
+        system_prompt_dict = self._get_system_prompt()
+        user_prompt_dict = self._get_user_prompt(website)
+
+        # For Google Gemini, the prompt structure is a bit different (no explicit 'system' role in simpler use)
+        # We can concatenate or adapt. For now, let's try a simple concatenation for Gemini.
+        # Or, Gemini supports specific "tools" and "system_instruction" in more advanced setups.
+        
+        # For Groq using OpenAI SDK, messages format is standard.
+
+        try:
+            if llm_provider == "openai":
+                if not api_key:
+                    raise HTTPException(status_code=400, detail="API key is required for OpenAI.")
+                effective_model = model_name or "gpt-4o-mini"
+                client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+                messages_for_openai = [system_prompt_dict, user_prompt_dict]
+                response = await client.chat.completions.create(
+                    model=effective_model,
+                    messages=messages_for_openai,
+                    temperature=0.2,
+                    max_tokens=1024,
+                )
+                return response.choices[0].message.content
+
+            elif llm_provider == "ollama":
+                effective_model = model_name or "gemma2:9b"
+                ollama_url = base_url or self.global_config.ollama_base_url
+                client = AsyncOpenAI(base_url=ollama_url, api_key=api_key or "ollama")
+                messages_for_ollama = [system_prompt_dict, user_prompt_dict]
+                response = await client.chat.completions.create(
+                    model=effective_model,
+                    messages=messages_for_ollama,
+                    temperature=0.2,
+                    max_tokens=1024,
+                )
+                return response.choices[0].message.content
+
+            elif llm_provider == "anthropic":
+                if not api_key:
+                    raise HTTPException(status_code=400, detail="API key is required for Anthropic.")
+                effective_model = model_name or "claude-3-haiku-20240307"
+                client = AsyncAnthropic(api_key=api_key, base_url=base_url)
+                response = await client.messages.create(
+                    model=effective_model,
+                    system=system_prompt_dict['content'],
+                    messages=[user_prompt_dict],
+                    max_tokens=1024,
+                    temperature=0.2,
+                )
+                return response.content[0].text
+            
+            elif llm_provider == "google":
+                if not api_key:
+                    raise HTTPException(status_code=400, detail="API key is required for Google Generative AI.")
+                
+                # Configure the SDK with the API key
+                try:
+                    genai.configure(api_key=api_key)
+                except Exception as e:
+                    raise HTTPException(status_code=500, detail=f"Failed to configure Google AI SDK: {str(e)}")
+
+                effective_model = model_name or "gemini-1.5-flash-latest" # Or "gemini-pro"
+                
+                # Gemini models have different ways to handle system instructions.
+                # Option 1: Using `system_instruction` (for newer models that support it well)
+                # model_instance = genai.GenerativeModel(
+                #     model_name=effective_model,
+                #     system_instruction=system_prompt_dict['content']
+                # )
+                # full_prompt = user_prompt_dict['content']
+
+                # Option 2: Prepending system context to the user prompt (more broadly compatible)
+                model_instance = genai.GenerativeModel(model_name=effective_model)
+                full_prompt = f"{system_prompt_dict['content']}\n\n{user_prompt_dict['content']}"
+
+                # Non-streaming generation
+                # Note: The google-generativeai SDK's generate_content is synchronous.
+                # To make it async, you'd typically run it in a thread pool executor with FastAPI.
+                loop = asyncio.get_event_loop()
+                try:
+                    # For safety config, see Google AI Studio docs. Example:
+                    safety_settings = [
+                        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+                    ]
+                    generation_config = genai.types.GenerationConfig(
+                        # candidate_count=1, # Default is 1
+                        # stop_sequences=['...'],
+                        max_output_tokens=1024,
+                        temperature=0.2,
+                        # top_p=...,
+                        # top_k=...
+                    )
+                    # The SDK call itself is sync
+                    response = await loop.run_in_executor(
+                        None, # Uses default ThreadPoolExecutor
+                        lambda: model_instance.generate_content(
+                            full_prompt,
+                            generation_config=generation_config,
+                            safety_settings=safety_settings
+                        )
+                    )
+                    # Check for empty response or blocked content
+                    if not response.candidates or not response.text:
+                         # Log the finish_reason and safety_ratings for debugging
+                        console.print(f"[yellow]Google AI response empty or blocked. Finish reason: {response.prompt_feedback if response.prompt_feedback else 'N/A'}. Safety ratings: {response.candidates[0].safety_ratings if response.candidates else 'N/A'}[/yellow]")
+                        # Try to get more info if available
+                        block_reason = "Unknown reason"
+                        if response.prompt_feedback and response.prompt_feedback.block_reason:
+                            block_reason = response.prompt_feedback.block_reason_message or str(response.prompt_feedback.block_reason)
+                        raise HTTPException(status_code=400, detail=f"Content generation blocked by Google AI. Reason: {block_reason}")
+                    return response.text
+                except Exception as e:
+                    # Catch specific Google API errors if possible, or re-raise generic
+                    console.print(f"[red]Error with Google AI generation: {e}[/red]")
+                    if "API key not valid" in str(e):
+                         raise HTTPException(status_code=401, detail="Invalid Google API Key.")
+                    raise HTTPException(status_code=500, detail=f"Error during Google AI summarization: {str(e)}")
+
+            elif llm_provider == "groq":
+                if not api_key:
+                    raise HTTPException(status_code=400, detail="API key is required for Groq.")
+                
+                # Option 1: Using Groq's own SDK (AsyncGroqClient)
+                # effective_model = model_name or "llama3-8b-8192" # Check Groq docs for available models
+                # client = AsyncGroqClient(api_key=api_key, base_url=base_url) # base_url usually not needed for Groq Cloud
+                # messages_for_groq = [system_prompt_dict, user_prompt_dict]
+                # response = await client.chat.completions.create(
+                #     model=effective_model,
+                #     messages=messages_for_groq,
+                #     temperature=0.2,
+                #     max_output_tokens=1024, # Groq uses max_output_tokens
+                # )
+                # return response.choices[0].message.content
+
+                # Option 2: Using OpenAI SDK with Groq's endpoint (Often simpler if already using OpenAI SDK)
+                effective_model = model_name or "llama3-8b-8192" # Groq's default or common model
+                # Groq's OpenAI-compatible endpoint:
+                groq_openai_base_url = base_url or "https://api.groq.com/openai/v1"
+                
+                client = AsyncOpenAI(api_key=api_key, base_url=groq_openai_base_url)
+                messages_for_groq_openai = [system_prompt_dict, user_prompt_dict]
+                response = await client.chat.completions.create(
+                    model=effective_model,
+                    messages=messages_for_groq_openai,
+                    temperature=0.2,
+                    max_tokens=1024, # OpenAI SDK uses max_tokens
+                )
+                
+                return response.choices[0].message.content
+
+            else:
+                raise HTTPException(status_code=400, detail=f"Unsupported LLM provider: {llm_provider}")
+
+        except HTTPException: # Re-raise known HTTPExceptions
+            raise
+        except Exception as e:
+            import traceback
+            console.print(f"[red]Error during summarization with {llm_provider} for {website.url}: {e}[/red]")
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"Error during summarization: {str(e)}")
+        finally:
+            console.print("Completed summarization i.e hitting the LLM")
 
 # --- FastAPI App ---
 app = FastAPI()
 
-# Configure CORS
+# Configure CORS with more specific settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Or specify your Next.js app's domain for production
+    allow_origins=["*"],  # In production, replace with specific domains
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Load config and summarizer once on startup
 config = Config()
-summarizer = LlmSummarizer(config)
+summarizer_service = LlmSummarizer(global_config=config)
 
 class SummarizeRequest(BaseModel):
     url: str
+    llm_provider: LLMProvider = Field(..., description="The LLM provider to use")
+    api_key: Optional[str] = Field(None, description="API key for the selected LLM provider (if required)")
+    model_name: Optional[str] = Field(None, description="Specific model name for the provider")
+    base_url: Optional[str] = Field(None, description="Custom base URL for the LLM API")
 
-class SummarizeResponse(BaseModel):
-    summary: Optional[str]
-    error: Optional[str] = None
 
-@app.post("/summarize", response_model=SummarizeResponse)
+@app.post("/summarize")
 async def api_summarize_website(request: SummarizeRequest):
-    console.print(f"Received request to summarize: {request.url}")
+    console.print(f"Received request: URL='{request.url}', Provider='{request.llm_provider}', Model='{request.model_name}' HasAPIKey={'Yes' if request.api_key else 'No'}, BaseURL: {request.base_url}")
     try:
-        summary_text = await summarizer.summarize(request.url)
-        if summary_text:
-            return SummarizeResponse(summary=summary_text)
-        else:
-            # This case might not be hit if summarize raises HTTPException for errors
-            return SummarizeResponse(summary=None, error="Could not generate summary.")
-    except HTTPException as e: # Catch HTTPExceptions raised by summarize
+        summary_text = await summarizer_service.summarize(
+            website_url=request.url,
+            llm_provider=request.llm_provider,
+            api_key=request.api_key,
+            model_name=request.model_name,
+            base_url=request.base_url
+        )
+        return {"summary": summary_text}
+    except HTTPException as e:
         console.print(f"[red]HTTPException for {request.url}: {e.detail}[/red]")
-        raise e # Re-raise it so FastAPI handles it
+        raise e
     except Exception as e:
         console.print(f"[red]Unexpected error for {request.url}: {e}[/red]")
-        # Log the full traceback for debugging
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+        raise HTTPException(status_code=500, detail="An unexpected server error occurred.")
+# Add a health check endpoint
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
 
 # To run this locally (for testing the API):
 # uvicorn main_api:app --reload
