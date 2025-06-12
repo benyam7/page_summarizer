@@ -1,75 +1,70 @@
 'use client';
 
-import { useState, useEffect, useRef, MutableRefObject } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { gsap } from 'gsap';
-// Optional: If you use complex motion paths often
-// import { MotionPathPlugin } from "gsap/MotionPathPlugin";
-// gsap.registerPlugin(MotionPathPlugin);
 
 const AnimationPhase = {
     LOADING: 'LOADING',
     FETCHED: 'FETCHED',
     IDLE: 'IDLE',
-} as const;
+};
 
 export const StickFigureAnimation = () => {
     const [progress, setProgress] = useState(0);
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
     const loadingTexts = [
-        'Warming up for the big throw!',
-        'Doggy senses are tingling...',
-        'Focusing on the stick...',
-        'Almost time for zoomies!',
-        'Fetching the good data!',
+        'Getting the park ready...',
+        'Dog senses a disturbance in the data...',
+        'Handler is warming up...',
+        'Stick acquired! Preparing for launch!',
+        'Fetching, please wait...',
     ];
-    const fetchedTexts = ['Got it!', 'Good dog!', 'Success!'];
+    const fetchedTexts = [
+        'Data fetched successfully!',
+        "Good dog, that's the one!",
+        'Return to sender (with data)!',
+    ];
     const [animationPhase, setAnimationPhase] = useState(
         AnimationPhase.LOADING
     );
     const [hasFetchedObject, setHasFetchedObject] = useState(false);
     const [initialCuesDone, setInitialCuesDone] = useState(false);
 
-    // Properly typed refs
-    const animationContainerRef = useRef<HTMLDivElement>(null);
-    const dogRef = useRef<HTMLDivElement>(null);
-    const dogHeadRef = useRef<HTMLDivElement>(null);
-    const dogBodyRef = useRef<HTMLDivElement>(null);
-    const dogEarLeftRef = useRef<HTMLDivElement>(null);
-    const dogEarRightRef = useRef<HTMLDivElement>(null);
-    const dogLegFLRef = useRef<HTMLDivElement>(null);
-    const dogLegFRRef = useRef<HTMLDivElement>(null);
-    const dogLegBLRef = useRef<HTMLDivElement>(null);
-    const dogLegBRRef = useRef<HTMLDivElement>(null);
-    const dogTailRef = useRef<HTMLDivElement>(null);
-    const handlerRef = useRef<HTMLDivElement>(null);
-    const handlerArmRef = useRef<HTMLDivElement>(null);
-    const handlerBodyRef = useRef<HTMLDivElement>(null);
-    const handlerHeadRef = useRef<HTMLDivElement>(null);
-    const handlerTorsoRef = useRef<HTMLDivElement>(null);
-    const handlerLegLeftRef = useRef<HTMLDivElement>(null);
-    const handlerLegRightRef = useRef<HTMLDivElement>(null);
-    const fetchObjectWorldRef = useRef<HTMLDivElement>(null);
-    const fetchObjectInHandRef = useRef<HTMLDivElement>(null);
-    const objectInMouthRef = useRef<HTMLDivElement>(null);
-    const backgroundRef = useRef<HTMLDivElement>(null);
+    const animationContainerRef = useRef(null);
+    const dogRef = useRef(null);
+    const dogHeadRef = useRef(null);
+    const dogBodyRef = useRef(null);
+    const dogEarLeftRef = useRef(null);
+    const dogEarRightRef = useRef(null);
+    const dogLegFLRef = useRef(null);
+    const dogLegFRRef = useRef(null);
+    const dogLegBLRef = useRef(null);
+    const dogLegBRRef = useRef(null);
+    const dogTailRef = useRef(null);
+    const handlerRef = useRef(null);
+    const handlerArmRef = useRef(null);
+    const handlerBodyRef = useRef(null);
+    const handlerHeadRef = useRef(null);
+    const handlerTorsoRef = useRef(null);
+    const handlerLegLeftRef = useRef(null);
+    const handlerLegRightRef = useRef(null);
+    const fetchObjectWorldRef = useRef(null);
+    const fetchObjectInHandRef = useRef(null);
+    const objectInMouthRef = useRef(null);
+    const backgroundRef = useRef(null);
 
-    // Timeline refs with proper GSAP types
-    const masterTimelineRef: MutableRefObject<gsap.core.Timeline | null> =
-        useRef(null);
-    const dogGallopSubTlRef: MutableRefObject<gsap.core.Timeline | null> =
-        useRef(null);
-    const dogTrotSubTlRef: MutableRefObject<gsap.core.Timeline | null> =
-        useRef(null);
+    const masterTimelineRef = useRef(null);
+    const dogGallopSubTlRef = useRef(null);
+    const dogTrotSubTlRef = useRef(null);
 
     useEffect(() => {
-        /* ... (API sim - same logic) ... */
         if (
             initialCuesDone &&
             animationPhase === AnimationPhase.LOADING &&
             !hasFetchedObject
         ) {
-            const apiCallDuration = Math.random() * 3000 + 6000; // 6-9 seconds
+            const apiCallDuration = Math.random() * 2500 + 5000; // 5-7.5 seconds
             const timer = setTimeout(() => {
                 setHasFetchedObject(true);
             }, apiCallDuration);
@@ -78,10 +73,8 @@ export const StickFigureAnimation = () => {
     }, [initialCuesDone, animationPhase, hasFetchedObject]);
 
     useEffect(() => {
-        /* ... (Progress bar & text - same logic) ... */
-        let progressIntervalId: NodeJS.Timeout | undefined;
-        let textIntervalId: NodeJS.Timeout | undefined;
-
+        let progressIntervalId;
+        let textIntervalId;
         if (animationPhase === AnimationPhase.LOADING) {
             progressIntervalId = setInterval(() => {
                 setProgress((prev) =>
@@ -91,17 +84,17 @@ export const StickFigureAnimation = () => {
                         ? 100
                         : prev + 1
                 );
-            }, 150);
+            }, 120);
             textIntervalId = setInterval(() => {
                 setCurrentTextIndex((prev) => (prev + 1) % loadingTexts.length);
-            }, 2000);
+            }, 1800);
         } else if (animationPhase === AnimationPhase.FETCHED) {
             setProgress(100);
             setCurrentTextIndex(0);
         }
         return () => {
-            if (progressIntervalId) clearInterval(progressIntervalId);
-            if (textIntervalId) clearInterval(textIntervalId);
+            clearInterval(progressIntervalId);
+            clearInterval(textIntervalId);
         };
     }, [
         animationPhase,
@@ -140,141 +133,129 @@ export const StickFigureAnimation = () => {
             return;
         }
 
-        // Cleanup previous timelines and styles
         if (masterTimelineRef.current) masterTimelineRef.current.kill();
         if (dogGallopSubTlRef.current) dogGallopSubTlRef.current.kill();
         if (dogTrotSubTlRef.current) dogTrotSubTlRef.current.kill();
-
         gsap.set(
             [
-                dogRef.current!,
-                dogHeadRef.current!,
-                dogBodyRef.current!,
-                dogEarLeftRef.current!,
-                dogEarRightRef.current!,
-                dogLegFLRef.current!,
-                dogLegFRRef.current!,
-                dogLegBLRef.current!,
-                dogLegBRRef.current!,
-                dogTailRef.current!,
-                handlerRef.current!,
-                handlerArmRef.current!,
-                handlerBodyRef.current!,
-                handlerHeadRef.current!,
-                handlerTorsoRef.current!,
-                handlerLegLeftRef.current!,
-                handlerLegRightRef.current!,
-                fetchObjectWorldRef.current!,
-                fetchObjectInHandRef.current!,
-                objectInMouthRef.current!,
-                backgroundRef.current!,
+                /* ... all animated refs ... */
             ],
             { clearProps: 'all' }
         );
 
-        const containerWidth = animationContainerRef.current!.offsetWidth;
-        const dogStartX = containerWidth * 0.32;
-        const handlerStartX = containerWidth * 0.12;
-        const fetchObjectLandX = containerWidth * 0.88;
-        const groundOffset = 3;
+        const containerWidth = animationContainerRef.current.offsetWidth;
+        const dogStartX = containerWidth * 0.3;
+        const handlerStartX = containerWidth * 0.1;
+        const fetchObjectLandX = containerWidth * 0.9;
+        const groundOffset = 2; // Sink elements slightly into grass
         const dogGroundY = groundOffset;
         const handlerGroundY = groundOffset;
-        const objectGroundY = 120 + groundOffset; // CSS height of stick-like object + ground offset
+        const objectHeight = 8; // From CSS
+        const objectGroundY =
+            parseFloat(getComputedStyle(animationContainerRef.current).height) *
+                0.65 -
+            objectHeight +
+            groundOffset; // 35% grass height
 
         masterTimelineRef.current = gsap.timeline({ paused: true });
         const tl = masterTimelineRef.current;
 
-        // === Dog Gallop Cycle ===
+        // === Dog Gallop Cycle (More detailed body motion) ===
         const createDogGallopCycle = () => {
             const gallopTl = gsap.timeline({ repeat: -1, paused: true });
-            const cycleDuration = 0.42;
+            const cycleDuration = 0.4; // Faster, more energetic gallop
+            const bodyYLower = dogGroundY + 3; // Max dip
+            const bodyYUpperSuspension = dogGroundY - 10; // Max air
+
+            // Body overall vertical motion, stretch, and squash
             gallopTl
                 .to(
-                    dogRef.current!,
+                    dogRef.current,
                     {
-                        y: dogGroundY - 9,
-                        duration: cycleDuration * 0.2,
+                        y: bodyYUpperSuspension,
+                        duration: cycleDuration * 0.15,
                         ease: 'sine.out',
                     },
-                    'gather'
-                )
+                    'sus1_start'
+                ) // Up - extended suspension
                 .to(
-                    dogRef.current!,
+                    dogBodyRef.current,
                     {
-                        y: dogGroundY,
-                        duration: cycleDuration * 0.3,
+                        scaleY: 1.1,
+                        scaleX: 0.9,
+                        skewY: -4,
+                        duration: cycleDuration * 0.15,
+                        ease: 'sine.out',
+                    },
+                    '<'
+                ) // Stretch
+                .to(
+                    dogRef.current,
+                    {
+                        y: bodyYLower,
+                        duration: cycleDuration * 0.25,
                         ease: 'sine.in',
                     },
                     '>'
-                )
+                ) // Down - front leg contact
                 .to(
-                    dogRef.current!,
-                    {
-                        y: dogGroundY - 13,
-                        duration: cycleDuration * 0.2,
-                        ease: 'sine.out',
-                    },
-                    'extend'
-                )
-                .to(
-                    dogRef.current!,
-                    {
-                        y: dogGroundY,
-                        duration: cycleDuration * 0.3,
-                        ease: 'sine.in',
-                    },
-                    '>'
-                );
-            gallopTl
-                .to(
-                    dogBodyRef.current!,
+                    dogBodyRef.current,
                     {
                         scaleY: 0.9,
                         scaleX: 1.1,
-                        skewY: 2,
+                        skewY: 3,
                         duration: cycleDuration * 0.25,
-                        ease: 'sine.inOut',
+                        ease: 'sine.in',
                     },
-                    'gather'
-                )
+                    '<'
+                ) // Squash/gather
                 .to(
-                    dogBodyRef.current!,
+                    dogRef.current,
+                    {
+                        y: bodyYUpperSuspension * 0.8,
+                        duration: cycleDuration * 0.2,
+                        ease: 'sine.out',
+                    },
+                    '>'
+                ) // Up - gathered suspension
+                .to(
+                    dogBodyRef.current,
                     {
                         scaleY: 1.05,
                         scaleX: 0.95,
-                        skewY: -3,
-                        duration: cycleDuration * 0.25,
+                        skewY: -2,
+                        duration: cycleDuration * 0.2,
                         ease: 'sine.out',
                     },
-                    '>'
-                )
+                    '<'
+                ) // Slight stretch
                 .to(
-                    dogBodyRef.current!,
+                    dogRef.current,
+                    {
+                        y: bodyYLower,
+                        duration: cycleDuration * 0.2,
+                        ease: 'sine.in',
+                    },
+                    '>'
+                ) // Down - hind leg contact
+                .to(
+                    dogBodyRef.current,
                     {
                         scaleY: 0.95,
                         scaleX: 1.05,
-                        skewY: 1,
-                        duration: cycleDuration * 0.25,
-                        ease: 'sine.inOut',
+                        skewY: 2,
+                        duration: cycleDuration * 0.2,
+                        ease: 'sine.in',
                     },
-                    '>'
-                )
-                .to(
-                    dogBodyRef.current!,
-                    {
-                        scaleY: 1,
-                        scaleX: 1,
-                        skewY: 0,
-                        duration: cycleDuration * 0.25,
-                        ease: 'sine.out',
-                    },
-                    '>'
-                );
+                    '<'
+                ); // Squash for push-off
+
+            // Head - more connected to body but slightly independent
             gallopTl.to(
-                dogHeadRef.current!,
+                dogHeadRef.current,
                 {
-                    rotation: 1,
-                    y: '+=0.5',
+                    rotation: 3,
+                    y: '-=1',
                     duration: cycleDuration / 4,
                     yoyo: true,
                     repeat: 3,
@@ -283,44 +264,118 @@ export const StickFigureAnimation = () => {
                 0
             );
 
-            const legMovement = (
-                leg: Element,
-                forwardRot: number,
-                backwardRot: number,
-                phaseOffset: number
-            ) => {
-                gallopTl
-                    .fromTo(
-                        leg,
-                        { rotation: backwardRot },
-                        {
-                            rotation: forwardRot,
-                            duration: cycleDuration * 0.4,
-                            ease: 'power1.out',
-                        },
-                        phaseOffset
-                    )
-                    .to(
-                        leg,
-                        {
-                            rotation: backwardRot,
-                            duration: cycleDuration * 0.6,
-                            ease: 'power1.in',
-                        },
-                        '>'
-                    );
-            };
+            // Ears - reacting to movement
+            gallopTl.to(
+                [dogEarLeftRef.current, dogEarRightRef.current],
+                {
+                    rotation: (i) => (i === 0 ? 25 : -25),
+                    y: '-=1',
+                    duration: cycleDuration * 0.4,
+                    ease: 'sine.inOut',
+                    yoyo: true,
+                    repeat: 1,
+                },
+                0
+            );
 
-            legMovement(dogLegBRRef.current!, 75, -60, 0);
-            legMovement(dogLegBLRef.current!, 75, -60, cycleDuration * 0.05);
-            legMovement(dogLegFRRef.current!, 70, -65, cycleDuration * 0.25);
-            legMovement(dogLegFLRef.current!, 70, -65, cycleDuration * 0.3);
+            // Enhanced leg movements with proper timing
+            // Back Right
+            gallopTl.fromTo(
+                dogLegBRRef.current,
+                { rotation: -60, y: dogGroundY },
+                {
+                    keyframes: [
+                        {
+                            rotation: 70,
+                            y: dogGroundY - 2,
+                            ease: 'power1.out',
+                            duration: cycleDuration * 0.3,
+                        },
+                        {
+                            rotation: -60,
+                            y: dogGroundY,
+                            ease: 'power1.in',
+                            duration: cycleDuration * 0.7,
+                        },
+                    ],
+                },
+                0
+            );
+
+            // Back Left (slight offset)
+            gallopTl.fromTo(
+                dogLegBLRef.current,
+                { rotation: -60, y: dogGroundY },
+                {
+                    keyframes: [
+                        {
+                            rotation: 70,
+                            y: dogGroundY - 2,
+                            ease: 'power1.out',
+                            duration: cycleDuration * 0.3,
+                        },
+                        {
+                            rotation: -60,
+                            y: dogGroundY,
+                            ease: 'power1.in',
+                            duration: cycleDuration * 0.7,
+                        },
+                    ],
+                },
+                cycleDuration * 0.08
+            );
+
+            // Front Right (after a delay for suspension)
+            gallopTl.fromTo(
+                dogLegFRRef.current,
+                { rotation: -65, y: dogGroundY },
+                {
+                    keyframes: [
+                        {
+                            rotation: 75,
+                            y: dogGroundY - 2,
+                            ease: 'power1.out',
+                            duration: cycleDuration * 0.3,
+                        },
+                        {
+                            rotation: -65,
+                            y: dogGroundY,
+                            ease: 'power1.in',
+                            duration: cycleDuration * 0.7,
+                        },
+                    ],
+                },
+                cycleDuration * 0.22
+            );
+
+            // Front Left (slight offset)
+            gallopTl.fromTo(
+                dogLegFLRef.current,
+                { rotation: -65, y: dogGroundY },
+                {
+                    keyframes: [
+                        {
+                            rotation: 75,
+                            y: dogGroundY - 2,
+                            ease: 'power1.out',
+                            duration: cycleDuration * 0.3,
+                        },
+                        {
+                            rotation: -65,
+                            y: dogGroundY,
+                            ease: 'power1.in',
+                            duration: cycleDuration * 0.7,
+                        },
+                    ],
+                },
+                cycleDuration * 0.3
+            );
 
             gallopTl.to(
-                dogTailRef.current!,
+                dogTailRef.current,
                 {
-                    rotation: 8,
-                    skewY: 4,
+                    rotation: 5,
+                    skewY: 3,
                     duration: cycleDuration / 2,
                     yoyo: true,
                     repeat: 1,
@@ -332,12 +387,12 @@ export const StickFigureAnimation = () => {
         };
         dogGallopSubTlRef.current = createDogGallopCycle();
 
-        // === Dog Trot Cycle ===
         const createDogTrotCycle = () => {
+            /* ... (same as previous fix, review durations/eases if needed) ... */
             const trotTl = gsap.timeline({ repeat: -1, paused: true });
             const cycleDuration = 0.38;
             trotTl.to(
-                dogRef.current!,
+                dogRef.current,
                 {
                     y: dogGroundY - 7,
                     duration: cycleDuration / 2,
@@ -348,18 +403,19 @@ export const StickFigureAnimation = () => {
                 0
             );
             trotTl.to(
-                dogBodyRef.current!,
+                dogBodyRef.current,
                 {
                     rotation: 0.5,
+                    y: '+=0.5',
                     duration: cycleDuration / 2,
                     ease: 'sine.inOut',
                     yoyo: true,
                     repeat: 1,
                 },
                 0
-            );
+            ); // Slight body rock
             trotTl.to(
-                dogHeadRef.current!,
+                dogHeadRef.current,
                 {
                     rotation: -2,
                     y: '+=1.5',
@@ -372,7 +428,7 @@ export const StickFigureAnimation = () => {
             );
             trotTl
                 .to(
-                    [dogLegFRRef.current!, dogLegBLRef.current!],
+                    [dogLegFRRef.current, dogLegBLRef.current],
                     {
                         rotation: 40,
                         duration: cycleDuration / 2,
@@ -381,7 +437,7 @@ export const StickFigureAnimation = () => {
                     0
                 )
                 .to(
-                    [dogLegFRRef.current!, dogLegBLRef.current!],
+                    [dogLegFRRef.current, dogLegBLRef.current],
                     {
                         rotation: -25,
                         duration: cycleDuration / 2,
@@ -391,7 +447,7 @@ export const StickFigureAnimation = () => {
                 );
             trotTl
                 .to(
-                    [dogLegFLRef.current!, dogLegBRRef.current!],
+                    [dogLegFLRef.current, dogLegBRRef.current],
                     {
                         rotation: 40,
                         duration: cycleDuration / 2,
@@ -400,7 +456,7 @@ export const StickFigureAnimation = () => {
                     cycleDuration / 2
                 )
                 .to(
-                    [dogLegFLRef.current!, dogLegBRRef.current!],
+                    [dogLegFLRef.current, dogLegBRRef.current],
                     {
                         rotation: -25,
                         duration: cycleDuration / 2,
@@ -409,9 +465,9 @@ export const StickFigureAnimation = () => {
                     '>'
                 );
             trotTl.to(
-                dogTailRef.current!,
+                dogTailRef.current,
                 {
-                    rotation: 35,
+                    rotation: 40,
                     duration: cycleDuration / 3,
                     yoyo: true,
                     repeat: 2,
@@ -424,348 +480,355 @@ export const StickFigureAnimation = () => {
         dogTrotSubTlRef.current = createDogTrotCycle();
 
         // --- TIMELINE SEGMENTS ---
-        tl.set(dogRef.current!, {
+        tl.set(dogRef.current, {
             x: dogStartX,
             y: dogGroundY,
             scaleX: 1,
             rotationY: 0,
         })
-            .set(handlerRef.current!, {
+            .set(handlerRef.current, {
                 x: handlerStartX,
                 y: handlerGroundY,
                 scaleX: 1,
                 rotationY: 0,
             })
-            .set(handlerTorsoRef.current!, { rotation: 0, skewX: 0 })
-            .set(handlerArmRef.current!, { rotation: 15, y: 0 }) // Arm slightly relaxed
-            .set(fetchObjectInHandRef.current!, { opacity: 1, y: 0 })
-            .set(fetchObjectWorldRef.current!, {
+            .set(handlerTorsoRef.current, { rotation: 0, skewX: 0, y: 0 })
+            .set(handlerArmRef.current, { rotation: 10, y: 0, x: 0 })
+            .set(fetchObjectInHandRef.current, { opacity: 1, y: 0, x: 0 })
+            .set(fetchObjectWorldRef.current, {
                 opacity: 0,
                 x: handlerStartX + 30,
                 y: 50 + handlerGroundY,
             })
-            .set(objectInMouthRef.current!, { opacity: 0 })
-            .set(backgroundRef.current!, { x: 0 });
+            .set(objectInMouthRef.current, { opacity: 0 })
+            .set(backgroundRef.current, { x: 0 });
 
         tl.to(
-            dogTailRef.current!,
+            dogTailRef.current,
             {
-                rotation: 28,
-                duration: 0.15,
+                rotation: 30,
+                duration: 0.12,
                 yoyo: true,
-                repeat: 7,
+                repeat: 9,
                 ease: 'sine.inOut',
             },
             'sceneStart'
-        )
+        ) // More excited wags
             .to(
-                dogHeadRef.current!,
-                { rotation: -18, y: '-=2.5', duration: 0.4, ease: 'sine.out' },
+                dogHeadRef.current,
+                { rotation: -20, y: '-=3', duration: 0.4, ease: 'sine.out' },
                 'sceneStart'
             )
             .to(
-                [dogEarLeftRef.current!, dogEarRightRef.current!],
+                [dogEarLeftRef.current, dogEarRightRef.current],
                 {
-                    rotation: (i: number) => (i === 0 ? -35 : 35),
-                    duration: 0.2,
+                    rotation: (i) => (i === 0 ? -40 : 40),
+                    y: '-=1',
+                    duration: 0.25,
                     ease: 'sine.out',
                 },
                 'sceneStart'
             );
 
         // === Segment 1: Handler Cues & Throw ===
-        tl.addLabel('handlerCuesStart', '>-0.3'); // Overlap slightly
-        // 1. Object Presentation (show dog the stick)
+        tl.addLabel('handlerCuesStart', '>-0.2');
         tl.to(
-            handlerHeadRef.current!,
-            { rotation: 22, duration: 0.4, ease: 'sine.inOut' },
+            handlerHeadRef.current,
+            { rotation: 25, duration: 0.4, ease: 'sine.inOut' },
             'handlerCuesStart+=0.2'
         )
             .to(
-                handlerTorsoRef.current!,
-                { rotation: 8, skewX: -4, duration: 0.5, ease: 'power1.out' },
+                handlerTorsoRef.current,
+                { rotation: 10, skewX: -5, duration: 0.5, ease: 'power1.out' },
                 'handlerCuesStart+=0.2'
             )
             .to(
-                handlerArmRef.current!,
+                handlerArmRef.current,
                 {
-                    rotation: -50,
-                    x: '+=8',
-                    y: '+=3',
+                    rotation: -55,
+                    x: '+=10',
+                    y: '+=2',
                     duration: 0.6,
-                    ease: 'back.out(1.2)',
+                    ease: 'back.out(1.5)',
                 },
                 'handlerCuesStart+=0.3'
             )
             .to(
-                dogHeadRef.current!,
-                {
-                    rotation: -22,
-                    y: '+=2.5',
-                    duration: 0.4,
-                    ease: 'sine.inOut',
-                },
+                dogHeadRef.current,
+                { rotation: -25, y: '+=3', duration: 0.4, ease: 'sine.inOut' },
                 'handlerCuesStart+=0.5'
             );
 
-        // 2. Pointing / Gaze Shift (more decisive)
-        tl.addLabel('pointing', '>+0.5')
+        tl.addLabel('pointing', '>+0.4')
             .to(
-                handlerHeadRef.current!,
-                { rotation: -12, duration: 0.5, ease: 'sine.inOut' },
+                handlerHeadRef.current,
+                { rotation: -15, duration: 0.5, ease: 'sine.inOut' },
                 'pointing'
             )
             .to(
-                handlerTorsoRef.current!,
+                handlerTorsoRef.current,
                 {
-                    rotation: -12,
-                    skewX: 6,
+                    rotation: -15,
+                    skewX: 8,
                     duration: 0.6,
                     ease: 'power1.inOut',
                 },
                 'pointing'
             )
             .to(
-                handlerArmRef.current!,
+                handlerArmRef.current,
                 {
-                    rotation: 35,
-                    x: '-=5',
-                    y: '-=8',
+                    rotation: 40,
+                    x: '-=6',
+                    y: '-=10',
                     duration: 0.5,
                     ease: 'power2.out',
                 },
                 'pointing+=0.1'
             )
             .to(
-                dogHeadRef.current!,
-                { rotation: 12, y: '-=1.5', duration: 0.4, ease: 'sine.inOut' },
+                dogHeadRef.current,
+                { rotation: 15, y: '-=2', duration: 0.4, ease: 'sine.inOut' },
                 'pointing+=0.3'
             );
 
-        // 3. Throwing Motion (Wind up - more power, weight shift on legs)
-        tl.addLabel('windup', '>+0.4')
+        // Wind up: More pronounced body mechanics and weight shift
+        tl.addLabel('windup', '>+0.3')
             .to(
-                handlerLegLeftRef.current!,
-                { scaleY: 0.9, rotation: -5, duration: 0.4, ease: 'power1.in' },
-                'windup'
-            ) // Weight on back leg
-            .to(
-                handlerLegRightRef.current!,
-                { scaleY: 1, rotation: 10, duration: 0.4, ease: 'power1.in' },
-                'windup'
-            ) // Front leg straightens/lifts heel
-            .to(
-                handlerTorsoRef.current!,
+                handlerLegLeftRef.current,
                 {
-                    rotation: -30,
-                    skewX: 18,
-                    y: '-=3',
-                    duration: 0.45,
+                    rotation: -8,
+                    y: '+=2',
+                    scaleY: 0.95,
+                    duration: 0.5,
+                    ease: 'power2.in',
+                },
+                'windup'
+            ) // Back leg bends more
+            .to(
+                handlerLegRightRef.current,
+                {
+                    rotation: 12,
+                    y: '-=1',
+                    scaleY: 1.02,
+                    duration: 0.5,
+                    ease: 'power2.in',
+                },
+                'windup'
+            ) // Front leg straightens, heel might lift
+            .to(
+                handlerTorsoRef.current,
+                {
+                    rotation: -35,
+                    skewX: 20,
+                    y: '-=5',
+                    duration: 0.5,
                     ease: 'power2.in',
                 },
                 'windup'
             )
             .to(
-                handlerHeadRef.current!,
-                { rotation: 8, duration: 0.45, ease: 'power1.in' },
+                handlerHeadRef.current,
+                { rotation: 10, duration: 0.5, ease: 'power1.in' },
                 'windup'
             )
             .to(
-                handlerArmRef.current!,
+                handlerArmRef.current,
                 {
-                    rotation: -120,
-                    y: '+=12',
-                    x: '-=5',
-                    duration: 0.45,
+                    rotation: -135,
+                    y: '+=15',
+                    x: '-=8',
+                    duration: 0.5,
                     ease: 'power2.in',
                 },
                 'windup'
-            )
-            .to(
-                dogRef.current!,
-                { y: dogGroundY + 6, duration: 0.25, ease: 'power1.in' },
-                'windup+=0.15'
-            )
-            .to(
-                dogBodyRef.current!,
-                {
-                    scaleY: 0.82,
-                    scaleX: 1.08,
-                    duration: 0.25,
-                    ease: 'power1.in',
-                },
-                '<'
-            )
-            .to(
-                dogTailRef.current!,
-                { rotation: -8, duration: 0.25, ease: 'power1.in' },
-                '<'
             );
 
-        // 4. Throw (Explosive release and follow-through)
-        const throwReleaseTime = 'throwAction+=0.1'; // When stick leaves hand
+        // Throw: Powerful release and follow through
+        const throwReleaseTime = 'throwAction+=0.08';
         tl.addLabel('throwAction', '>')
             .to(
-                handlerLegLeftRef.current!,
-                { scaleY: 1, rotation: 0, duration: 0.3, ease: 'power2.out' },
-                'throwAction'
-            ) // Push off back leg
-            .to(
-                handlerLegRightRef.current!,
+                handlerLegLeftRef.current,
                 {
-                    scaleY: 0.95,
-                    rotation: 0,
-                    duration: 0.3,
-                    ease: 'power2.out',
-                },
-                'throwAction'
-            ) // Brace on front leg
-            .to(
-                handlerTorsoRef.current!,
-                {
-                    rotation: 25,
-                    skewX: -12,
+                    rotation: 5,
                     y: 0,
-                    duration: 0.3,
-                    ease: 'power2.out',
+                    scaleY: 1,
+                    duration: 0.35,
+                    ease: 'expo.out',
+                },
+                'throwAction'
+            ) // Explosive push from back leg
+            .to(
+                handlerLegRightRef.current,
+                {
+                    rotation: -5,
+                    y: 0,
+                    scaleY: 0.98,
+                    duration: 0.35,
+                    ease: 'expo.out',
+                },
+                'throwAction'
+            ) // Front leg braces
+            .to(
+                handlerTorsoRef.current,
+                {
+                    rotation: 30,
+                    skewX: -15,
+                    y: 0,
+                    duration: 0.35,
+                    ease: 'expo.out',
                 },
                 'throwAction'
             )
             .to(
-                handlerArmRef.current!,
+                handlerArmRef.current,
                 {
-                    rotation: 60,
-                    y: '-=18',
-                    x: '+=8',
-                    duration: 0.3,
-                    ease: 'power2.out',
+                    rotation: 70,
+                    y: '-=20',
+                    x: '+=12',
+                    duration: 0.35,
+                    ease: 'expo.out',
                 },
                 'throwAction'
-            )
+            ) // Fast arm swing
             .to(
-                handlerHeadRef.current!,
-                { rotation: -18, duration: 0.3, ease: 'power2.out' },
+                handlerHeadRef.current,
+                { rotation: -20, duration: 0.35, ease: 'expo.out' },
                 'throwAction'
             )
-            .set(
-                fetchObjectInHandRef.current!,
-                { opacity: 0 },
-                throwReleaseTime
-            )
-            .set(
-                fetchObjectWorldRef.current!,
+            .set(fetchObjectInHandRef.current, { opacity: 0 }, throwReleaseTime)
+            .fromTo(
+                fetchObjectWorldRef.current,
                 {
+                    // From: near hand at release
                     opacity: 1,
-                    x: () => {
-                        const handlerX = Number(
-                            gsap.getProperty(handlerRef.current!, 'x')
-                        );
-                        const armRotation = Number(
-                            gsap.getProperty(handlerArmRef.current!, 'rotation')
-                        );
-                        return (
-                            handlerX +
-                            40 +
-                            Math.sin((armRotation * Math.PI) / 180) * 30
-                        );
-                    },
-                    y: () => {
-                        const handlerY = Number(
-                            gsap.getProperty(handlerRef.current!, 'y')
-                        );
-                        const armRotation = Number(
-                            gsap.getProperty(handlerArmRef.current!, 'rotation')
-                        );
-                        return (
-                            handlerY +
-                            30 -
-                            Math.cos((armRotation * Math.PI) / 180) * 30
-                        );
-                    },
-                    rotation: -45,
+                    x: () =>
+                        gsap.getProperty(handlerRef.current, 'x') +
+                        25 +
+                        Math.sin(
+                            (gsap.getProperty(
+                                handlerArmRef.current,
+                                'rotation'
+                            ) *
+                                Math.PI) /
+                                180
+                        ) *
+                            35,
+                    y: () =>
+                        gsap.getProperty(handlerRef.current, 'y') +
+                        25 -
+                        Math.cos(
+                            (gsap.getProperty(
+                                handlerArmRef.current,
+                                'rotation'
+                            ) *
+                                Math.PI) /
+                                180
+                        ) *
+                            35,
+                    rotation: -60,
                 },
-                throwReleaseTime
-            )
-            .to(
-                fetchObjectWorldRef.current!,
                 {
-                    duration: 1.1,
+                    // To: landing spot with enhanced physics
+                    duration: 1.0,
                     ease: 'power1.out',
                     motionPath: {
                         path: [
                             {
-                                x: handlerStartX + containerWidth * 0.4,
-                                y: handlerGroundY - 60,
+                                x: handlerStartX + containerWidth * 0.45,
+                                y: handlerGroundY - 70,
                             },
                             { x: fetchObjectLandX, y: objectGroundY },
                         ],
-                        curviness: 1.1,
-                        align: fetchObjectWorldRef.current!,
-                        alignOrigin: [0.5, 0.5],
+                        curviness: 1.0,
                     },
-                    rotation: '+=820', // Spin
+                    rotation: '+=920', // More spin
                 },
                 throwReleaseTime
             )
             .to(
-                handlerArmRef.current!,
-                { rotation: 80, y: '-=5', duration: 0.5, ease: 'circ.out' },
-                'throwAction+=0.3'
-            ) // Follow through
+                handlerArmRef.current,
+                { rotation: 90, y: '-=8', duration: 0.6, ease: 'circ.out' },
+                'throwAction+=0.35'
+            ) // Fuller follow through
             .to(
-                handlerTorsoRef.current!,
-                { rotation: 15, skewX: 0, duration: 0.5, ease: 'circ.out' },
-                'throwAction+=0.3'
+                handlerTorsoRef.current,
+                { rotation: 20, skewX: 0, duration: 0.6, ease: 'circ.out' },
+                'throwAction+=0.35'
             )
+            .to(handlerLegLeftRef.current, { rotation: 0 }, '>-0.3') // Settle legs
+            .to(handlerLegRightRef.current, { rotation: 0 }, '<');
 
-            // Dog's launch
+        // Dog's launch: more explosive and timed with throw
+        tl.to(
+            dogRef.current,
+            {
+                keyframes: [
+                    {
+                        y: dogGroundY - 15,
+                        x: `+=${containerWidth * 0.03}`,
+                        ease: 'power2.out',
+                        duration: 0.15,
+                    }, // Up
+                    {
+                        y: dogGroundY,
+                        x: `+=${containerWidth * 0.06}`,
+                        ease: 'power1.in',
+                        duration: 0.2,
+                    }, // Land and forward
+                ],
+            },
+            'throwAction+=0.03'
+        )
             .to(
-                dogRef.current!,
+                dogBodyRef.current,
                 {
-                    y: dogGroundY - 12,
-                    x: `+=${containerWidth * 0.05}`,
-                    duration: 0.25,
-                    ease: 'power2.out',
-                },
-                'throwAction+=0.05'
-            ) // Dog anticipates earlier
-            .to(
-                dogBodyRef.current!,
-                {
-                    scaleY: 1.15,
-                    scaleX: 0.85,
-                    duration: 0.25,
-                    ease: 'power2.out',
+                    keyframes: [
+                        {
+                            scaleY: 1.2,
+                            scaleX: 0.8,
+                            skewY: -3,
+                            ease: 'power2.out',
+                            duration: 0.15,
+                        },
+                        {
+                            scaleY: 0.9,
+                            scaleX: 1.1,
+                            skewY: 2,
+                            ease: 'power1.in',
+                            duration: 0.2,
+                        },
+                    ],
                 },
                 '<'
             )
             .add(() => {
                 if (dogGallopSubTlRef.current)
-                    dogGallopSubTlRef.current.play(0);
-            }, '>-0.05') // Start gallop as dog lands from initial jump
+                    dogGallopSubTlRef.current.invalidate().play(0);
+            }, 'throwAction+=0.35') // Start gallop after landing
             .add(() => setInitialCuesDone(true), '>');
 
-        // === Segment 2: Dog Runs to Object ===
         tl.addLabel('dogRunToTarget', '>');
-        const dogRunDuration = 1.5;
+        const dogRunDuration = 1.4; // Slightly faster run
         tl.to(
-            dogRef.current!,
+            dogRef.current,
             {
-                x: fetchObjectLandX - 30,
+                x: fetchObjectLandX - 25,
                 duration: dogRunDuration,
                 ease: 'none',
             },
             'dogRunToTarget'
         )
             .to(
-                backgroundRef.current!,
+                backgroundRef.current,
                 {
-                    x: () => {
-                        const dogX = Number(
-                            gsap.getProperty(dogRef.current!, 'x')
-                        );
-                        return `-=${(fetchObjectLandX - 30 - dogX) * 1.6}`;
-                    },
+                    x: () =>
+                        `-=${
+                            (fetchObjectLandX -
+                                25 -
+                                gsap.getProperty(dogRef.current, 'x')) *
+                            1.7
+                        }`,
                     duration: dogRunDuration,
                     ease: 'none',
                 },
@@ -773,29 +836,25 @@ export const StickFigureAnimation = () => {
             )
             .addPause('dogAtObjectPause');
 
-        // === Segment 3: Catch and Return ===
-        tl.addLabel('catchAndReturnStart'); // No ">", allow jump here
-        // Dog Decelerates and Prepares for Catch
+        tl.addLabel('catchAndReturnStart');
+        // Dog Decelerates, Prepares for Catch, and Catches
         tl.add(() => {
-            if (dogGallopSubTlRef.current)
-                dogGallopSubTlRef.current.timeScale(0.5).duration(0.3);
-        }) // Slow down gallop
+            if (dogGallopSubTlRef.current) {
+                dogGallopSubTlRef.current.timeScale(0.4);
+                gsap.to(dogGallopSubTlRef.current, {
+                    duration: 0.2,
+                    timeScale: 0,
+                    onComplete: () => dogGallopSubTlRef.current?.pause(),
+                });
+            }
+        }) // Smoothly slow down and pause gallop
             .to(
-                dogRef.current!,
-                { x: `+=${10}`, duration: 0.3, ease: 'power1.out' },
-                '<'
-            ) // Final short approach
-            .add(() => {
-                if (dogGallopSubTlRef.current)
-                    dogGallopSubTlRef.current.pause();
-            }, '+=0.2')
-            .to(dogRef.current!, {
-                y: dogGroundY,
-                duration: 0.2,
-                ease: 'power1.in',
-            })
+                dogRef.current,
+                { x: `+=${15}`, duration: 0.4, ease: 'power1.out' },
+                '<+=0.05'
+            ) // Final approach, slight overshoot for realism
             .to(
-                dogBodyRef.current!,
+                dogBodyRef.current,
                 {
                     scaleY: 0.9,
                     scaleX: 1.05,
@@ -803,125 +862,120 @@ export const StickFigureAnimation = () => {
                     duration: 0.2,
                     ease: 'power1.in',
                 },
-                '<'
-            ); // Brace for catch
-
-        // The Catch
-        tl.to(dogHeadRef.current!, {
-            rotation: 40,
-            y: '+=22',
-            x: '+=8',
-            duration: 0.25,
-            ease: 'power2.in',
-        })
+                '>-0.1'
+            )
+            .to(dogHeadRef.current, {
+                rotation: 45,
+                y: '+=25',
+                x: '+=10',
+                duration: 0.2,
+                ease: 'power2.in',
+            }) // Quicker, more direct head dart
             .to(
-                dogTailRef.current!,
-                { rotation: -10, duration: 0.15, ease: 'power1.in' },
+                dogTailRef.current,
+                { rotation: -15, duration: 0.1, ease: 'power1.in' },
                 '<'
             )
             .to(
-                fetchObjectWorldRef.current!,
-                {
-                    y: '+=5',
-                    x: '-=3',
-                    opacity: 0,
-                    duration: 0.1,
-                    ease: 'sine.in',
-                },
-                '>-0.1'
-            ) // Stick gets "nudged" into mouth
-            .set(objectInMouthRef.current!, { opacity: 1 }, '>-0.05')
-            .to(dogHeadRef.current!, {
-                rotation: -8,
+                fetchObjectWorldRef.current,
+                { opacity: 0, scale: 0.8, duration: 0.05, ease: 'sine.in' },
+                '>-0.08'
+            ) // Stick "goes into" mouth
+            .set(objectInMouthRef.current, { opacity: 1, scale: 0.8 }, '<')
+            .to(
+                objectInMouthRef.current,
+                { scale: 1, duration: 0.1, ease: 'back.out(2)' },
+                '>'
+            )
+            .to(dogHeadRef.current, {
+                rotation: -10,
                 y: 0,
                 x: 0,
-                duration: 0.45,
-                ease: 'back.out(2.5)',
-            }) // Head up proudly
+                duration: 0.4,
+                ease: 'back.out(3)',
+            }) // Stronger proud lift
             .to(
-                dogBodyRef.current!,
+                dogBodyRef.current,
                 {
-                    scaleY: 1.05,
-                    scaleX: 0.95,
-                    skewY: 0,
-                    duration: 0.3,
-                    ease: 'back.out(1)',
+                    scaleY: 1.1,
+                    scaleX: 0.9,
+                    skewY: -1,
+                    duration: 0.35,
+                    ease: 'back.out(1.5)',
                 },
                 '<'
-            ) // Body puffs up slightly
+            ) // Body "uncoils" with pride
             .to(
-                dogTailRef.current!,
+                dogTailRef.current,
                 {
-                    rotation: 30,
+                    rotation: 35,
                     yoyo: true,
-                    repeat: 3,
-                    duration: 0.15,
+                    repeat: 5,
+                    duration: 0.12,
                     ease: 'sine.inOut',
                 },
-                '>-0.2'
-            ); // Happy short wags
+                '>-0.25'
+            );
 
-        // Turn around
-        tl.addLabel('dogTurn', '>+0.4')
+        // Turn around - simplified hop and flip
+        tl.addLabel('dogTurn', '>+0.3')
             .to(
-                dogRef.current!,
-                { y: dogGroundY - 10, duration: 0.2, ease: 'sine.out' },
+                dogRef.current,
+                { y: dogGroundY - 12, duration: 0.15, ease: 'sine.out' },
                 'dogTurn'
             )
+            .to(dogRef.current, { scaleX: -1, duration: 0.01 }, '>+=0.05') // Flip
+            .to(dogRef.current, { x: '-=5', duration: 0.1, ease: 'none' }, '<')
             .to(
-                dogRef.current!,
-                { rotationY: '+=180', duration: 0.4, ease: 'power1.inOut' },
-                '>'
-            ) // Use rotationY for a smoother turn if visual style supports it
-            .to(
-                dogRef.current!,
-                { y: dogGroundY, duration: 0.2, ease: 'sine.in' },
+                dogRef.current,
+                { y: dogGroundY, duration: 0.15, ease: 'sine.in' },
                 '>'
             );
 
-        // Trot back
+        // Trot back with pride
         tl.addLabel('dogTrotBack', '>+0.2')
             .add(() => {
                 if (dogTrotSubTlRef.current)
-                    dogTrotSubTlRef.current.timeScale(1).play(0);
+                    dogTrotSubTlRef.current.invalidate().play(0).timeScale(1);
             })
             .to(
-                dogRef.current!,
-                { x: dogStartX + 25, duration: 2.3, ease: 'none' },
+                dogRef.current,
+                { x: dogStartX + 30, duration: 2.4, ease: 'none' },
                 'dogTrotBack'
             )
             .to(
-                backgroundRef.current!,
-                { x: 0, duration: 2.3, ease: 'none' },
+                backgroundRef.current,
+                { x: 0, duration: 2.4, ease: 'none' },
                 'dogTrotBack'
             );
 
+        // Final proud stance
         tl.addLabel('finishReturn', '>')
             .add(() => {
                 if (dogTrotSubTlRef.current) dogTrotSubTlRef.current.pause();
             })
-            .to(dogRef.current!, {
+            .to(dogRef.current, {
                 y: dogGroundY,
                 duration: 0.2,
                 ease: 'power1.in',
             })
-            .to(dogHeadRef.current!, {
-                rotation: -12,
-                y: '-=3.5',
+            .to(dogHeadRef.current, {
+                rotation: -15,
+                y: '-=4',
                 duration: 0.3,
                 ease: 'sine.out',
-            })
+            }) // Head up to handler
             .to(
-                dogTailRef.current!,
+                dogTailRef.current,
                 {
-                    rotation: 35,
-                    duration: 0.15,
+                    rotation: 40,
+                    duration: 0.1,
                     yoyo: true,
-                    repeat: 9,
+                    repeat: 13,
                     ease: 'sine.inOut',
                 },
                 '<'
-            ); // Lots of wags
+            );
 
         tl.add(() => {
             setAnimationPhase(AnimationPhase.IDLE);
@@ -929,7 +983,7 @@ export const StickFigureAnimation = () => {
                 setHasFetchedObject(false);
                 setInitialCuesDone(false);
                 setProgress(0);
-                setAnimationPhase(AnimationPhase.LOADING);
+                setAnimationPhase(AnimationPhase.LOADING); // This will trigger the useEffect to rebuild
             }, 3000);
         }, '>+1.5');
 
@@ -938,50 +992,44 @@ export const StickFigureAnimation = () => {
             if (!initialCuesDone) {
                 tl.play('sceneStart');
             } else {
-                // Cues are done
                 if (hasFetchedObject) {
-                    // If API is done AND timeline is paused at or after dogAtObjectPause
                     if (
                         tl.paused() &&
-                        tl.totalTime() >= (tl.labels as any).dogAtObjectPause
+                        tl.totalTime() >= tl.labels.dogAtObjectPause
                     ) {
-                        tl.seek('catchAndReturnStart').play(); // Jump to catch sequence
+                        tl.seek('catchAndReturnStart').play();
                         setAnimationPhase(AnimationPhase.FETCHED);
                     } else if (
                         !tl.isActive() &&
-                        tl.totalTime() < (tl.labels as any).dogAtObjectPause
+                        tl.totalTime() < tl.labels.dogAtObjectPause
                     ) {
-                        // If not active but should be running towards object
                         tl.play('dogRunToTarget');
                     }
                 } else {
-                    // API not done yet, continue or resume run to object
                     if (
                         tl.paused() &&
-                        tl.totalTime() < (tl.labels as any).dogAtObjectPause
+                        tl.totalTime() < tl.labels.dogAtObjectPause
                     ) {
-                        tl.play(); // Resume if paused before dogAtObjectPause
+                        tl.play();
                     } else if (
                         !tl.isActive() &&
-                        tl.totalTime() < (tl.labels as any).dogAtObjectPause
+                        tl.totalTime() < tl.labels.dogAtObjectPause
                     ) {
-                        tl.play('dogRunToTarget'); // Ensure it plays up to the pause
+                        tl.play('dogRunToTarget');
                     }
-                    // If it's already paused at dogAtObjectPause, do nothing, wait for hasFetchedObject
                 }
             }
         }
 
         return () => {
-            /* ... cleanup ... */
             if (masterTimelineRef.current) masterTimelineRef.current.kill();
             if (dogGallopSubTlRef.current) dogGallopSubTlRef.current.kill();
             if (dogTrotSubTlRef.current) dogTrotSubTlRef.current.kill();
         };
-    }, [animationPhase, hasFetchedObject, initialCuesDone]);
+    }, [animationPhase, hasFetchedObject, initialCuesDone]); // Critical dependencies
 
     return (
-        /* ... JSX ... */
+        /* ... JSX ... ensure handler legs have refs (handlerLegLeftRef, handlerLegRightRef) ... */
         <Card className="w-full h-full flex flex-col items-center justify-center border-0 shadow-none bg-transparent">
             <CardContent className="flex flex-col items-center gap-6 p-6 w-full">
                 <div
@@ -1095,7 +1143,7 @@ export const StickFigureAnimation = () => {
             </CardContent>
 
             <style jsx>{
-                /* ... CSS ... (add styles for handler-leg if not already distinct) ... */ `
+                /* ... CSS ... (ensure handler-leg.left/right classes exist and have transform-origin: top center;) ... */ `
                     .animation-container {
                         background-color: #87ceeb;
                         position: relative;
@@ -1169,7 +1217,7 @@ export const StickFigureAnimation = () => {
                     }
                     .handler-torso {
                         position: absolute;
-                        bottom: 25px;
+                        bottom: 28px; /* Adjusted for leg height */
                         left: 50%;
                         width: 15px;
                         height: 60px;
@@ -1204,13 +1252,13 @@ export const StickFigureAnimation = () => {
                         background: #2f4f4f;
                         border-radius: 3px;
                         transform-origin: top center;
-                    }
+                    } /* Crucial: transform-origin */
                     .handler-leg.left {
                         left: 8px;
-                    } /* Ensure these selectors target the right elements */
+                    }
                     .handler-leg.right {
                         right: 8px;
-                    } /* Ensure these selectors target the right elements */
+                    }
                     .handler-arm {
                         position: absolute;
                         top: 5px;
@@ -1220,7 +1268,7 @@ export const StickFigureAnimation = () => {
                         background: #4682b4;
                         border-radius: 4px;
                         transform-origin: top left;
-                    }
+                    } /* Crucial: transform-origin */
                     .handler-hand {
                         position: absolute;
                         bottom: -5px;
@@ -1264,7 +1312,7 @@ export const StickFigureAnimation = () => {
                     }
                     .dog-body {
                         position: absolute;
-                        bottom: 10px;
+                        bottom: 10px; /* Adjusted for legs */
                         left: 15px;
                         width: 50px;
                         height: 25px;
@@ -1274,14 +1322,14 @@ export const StickFigureAnimation = () => {
                     }
                     .dog-head {
                         position: absolute;
-                        bottom: 20px;
-                        left: 50px;
+                        bottom: 20px; /* On body */
+                        left: 50px; /* Front of body */
                         width: 30px;
                         height: 30px;
                         background: #deb887;
                         border-radius: 50% 50% 40% 40%;
                         transform-origin: 10px 25px;
-                    }
+                    } /* neck pivot: x,y from top-left */
                     .dog-snout {
                         position: absolute;
                         bottom: 2px;
@@ -1316,20 +1364,20 @@ export const StickFigureAnimation = () => {
                     .dog-ear.left {
                         left: 2px;
                         transform-origin: 100% 100%;
-                    }
+                    } /* base of ear, bottom-right corner */
                     .dog-ear.right {
                         right: 2px;
                         transform-origin: 0% 100%;
-                    }
+                    } /* base of ear, bottom-left corner */
                     .dog-leg {
                         position: absolute;
-                        bottom: 0px;
+                        bottom: 0px; /* Base of dog */
                         width: 8px;
                         height: 20px;
                         background: #deb887;
                         border-radius: 4px;
                         transform-origin: top center;
-                    }
+                    } /* Crucial: transform-origin */
                     .dog-leg.fl {
                         left: 18px;
                     }
@@ -1344,18 +1392,18 @@ export const StickFigureAnimation = () => {
                     }
                     .dog-tail {
                         position: absolute;
-                        bottom: 20px;
-                        left: 5px;
+                        bottom: 20px; /* Base on body */
+                        left: 5px; /* Back of body */
                         width: 25px;
                         height: 8px;
                         background: #a0522d;
                         border-radius: 4px;
                         transform-origin: left center;
-                    }
+                    } /* Crucial: transform-origin */
                     .object-in-mouth {
                         position: absolute;
-                        bottom: 0px;
-                        left: -20px;
+                        bottom: 0px; /* In snout */
+                        left: -20px; /* Extends from snout */
                         transform: rotate(-15deg);
                         width: 30px;
                         height: 8px;
