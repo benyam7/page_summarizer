@@ -26,6 +26,7 @@ interface SummaryResponse {
         model: string;
         processing_time: string;
     };
+    detail?: string;
 }
 
 export default function WebDoggoApp() {
@@ -73,7 +74,7 @@ export default function WebDoggoApp() {
         setError(null);
         setRequest(formData);
         setCurrentStep(0);
-
+        console.log('formData', formData);
         try {
             // Simulate the different steps of the fetching process
             const steps = [
@@ -106,6 +107,9 @@ export default function WebDoggoApp() {
 
             const data: SummaryResponse = await response.json();
             setSummaryData(data);
+            if (data.detail) {
+                setError(data.detail);
+            }
         } catch (err) {
             setError(
                 "Woof! Something went wrong during the fetch. Let's try again! 🐕"
@@ -151,7 +155,12 @@ export default function WebDoggoApp() {
 
             <DoggoHeader />
             <div className="flex-1 overflow-hidden flex flex-col">
-                {error && <DoggoError error={error} />}
+                {error && (
+                    <DoggoError
+                        detail={error}
+                        onBackToForm={handleBackToForm}
+                    />
+                )}
 
                 {showForm ? (
                     <>
