@@ -85,37 +85,27 @@ export default function WebDoggoApp() {
             ];
 
             for (let i = 0; i < steps.length; i++) {
-                await new Promise((resolve) => setTimeout(resolve, 3000));
+                await new Promise((resolve) => setTimeout(resolve, 5000));
                 setCurrentStep(i + 1);
             }
 
-            // Simulate API response
-            const mockResponse: SummaryResponse = {
-                summary: `Woof! I've fetched a great summary of ${formData.url} for you! 🐕
+            const response = await fetch(
+                'https://page-sum-from-gh-656961743998.europe-west1.run.app/summarize',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData),
+                }
+            );
 
-The website appears to be about technology and innovation, discussing various aspects of modern computing and digital transformation. Here's what I found:
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
-🦴 **Key Points:**
-• Cloud computing benefits and implementation strategies
-• AI integration in business processes and decision-making  
-• Best practices for digital security and data protection
-• Case studies of successful digital transformations
-• Future trends in technology and their potential impact
-
-🎾 **Main Takeaway:**
-The site provides comprehensive resources for organizations looking to modernize their technology stack and leverage data-driven insights for competitive advantage.
-
-*Tail wagging intensifies* - This was a good fetch! 🐾`,
-                metadata: {
-                    url: formData.url,
-                    title: 'Technology & Innovation Hub',
-                    provider: formData.llm_provider,
-                    model: formData.model_name || 'default model',
-                    processing_time: '15.3 seconds',
-                },
-            };
-
-            setSummaryData(mockResponse);
+            const data: SummaryResponse = await response.json();
+            setSummaryData(data);
         } catch (err) {
             setError(
                 "Woof! Something went wrong during the fetch. Let's try again! 🐕"
