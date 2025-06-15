@@ -91,7 +91,7 @@ export default function WebDoggoApp() {
             }
 
             const response = await fetch(
-                'https://page-sum-from-gh-656961743998.europe-west1.run.app/summarize',
+                `${process.env.NEXT_PUBLIC_SUMMARIZER_API_URL}/summarize`,
                 {
                     method: 'POST',
                     headers: {
@@ -107,12 +107,9 @@ export default function WebDoggoApp() {
 
             const data: SummaryResponse = await response.json();
             setSummaryData(data);
-            if (data.detail) {
-                setError(data.detail);
-            }
         } catch (err) {
             setError(
-                "Woof! Something went wrong during the fetch. Let's try again! 🐕"
+                'Woof! Make sure you have entered correct API key and model name. Let&apos;s try again! 🐕'
             );
         } finally {
             setIsFetching(false);
