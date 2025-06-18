@@ -6,6 +6,7 @@ import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware # For allowing Next.js to call
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from rich.console import Console
 from rich.markdown import Markdown # You might not use Rich directly in API responses
@@ -16,7 +17,7 @@ from pyppeteer import launch
 from pyppeteer_stealth import stealth
 from random import randint
 import google.generativeai as genai # For Google Gemini
-
+import json
 
 console = Console() # For server-side logging
 
@@ -154,20 +155,16 @@ class Website:
     def __init__(self):
         pass
 
-
     def __str__(self) -> str:
         return f"Website(url={self.url}, title=\"{self.title}\")"
 
-
-LLMProvider = Literal["openai", "ollama", "anthropic", "google", "groq"]  
+LLMProvider = Literal["openai", "ollama", "anthropic", "google", "groq", "deepseek"]  
 
 class LlmSummarizer:
     def __init__(self, global_config: Config):
         self.global_config = global_config
         # For Google, API key is configured globally via the SDK usually
         # but we'll accept it from the user for max flexibility
-
-
 
     def _get_system_prompt(self) -> Dict[str, str]:
         return {
@@ -244,7 +241,20 @@ class LlmSummarizer:
                     max_tokens=1024,
                 )
                 return response.choices[0].message.content
-
+            elif llm_provider == "deepseek":
+                if not api_key:
+                    raise HTTPException(status_code=400, detail="API key is required for DeepSeek.")
+                effective_model = model_name or "deepseek-chat"
+                client = AsyncOpenAI(api_key=api_key, base_url='https://api.deepseek.com')
+                messages_for_deepseek = [system_prompt_dict, user_prompt_dict]
+                response = await client.chat.completions.create(
+                    model=effective_model,
+                    messages=messages_for_deepseek,
+                    temperature=0.2,
+                    max_tokens=1024,
+                    stream=False
+                )
+                return response.choices[0].message.content
             elif llm_provider == "anthropic":
                 if not api_key:
                     raise HTTPException(status_code=400, detail="API key is required for Anthropic.")
@@ -398,11 +408,13 @@ class SummarizeRequest(BaseModel):
     model_name: Optional[str] = Field(None, description="Specific model name for the provider")
     base_url: Optional[str] = Field(None, description="Custom base URL for the LLM API")
 
-
 @app.post("/summarize")
 async def api_summarize_website(request: SummarizeRequest):
     console.print(f"Received request: URL='{request.url}', Provider='{request.llm_provider}', Model='{request.model_name}' HasAPIKey={'Yes' if request.api_key else 'No'}, BaseURL: {request.base_url}")
     try:
+        import time
+        start_time = time.time()
+        
         summary_text = await summarizer_service.summarize(
             website_url=request.url,
             llm_provider=request.llm_provider,
@@ -410,7 +422,19 @@ async def api_summarize_website(request: SummarizeRequest):
             model_name=request.model_name,
             base_url=request.base_url
         )
-        return {"summary": summary_text}
+        
+        processing_time = f"{time.time() - start_time:.1f} seconds"
+        
+        return {
+            "summary": summary_text,
+            "metadata": {
+                "url": request.url,
+                "title": "Website Summary",
+                "provider": request.llm_provider,
+                "model": request.model_name or "default model",
+                "processing_time": processing_time
+            }
+        }
     except HTTPException as e:
         console.print(f"[red]HTTPException for {request.url}: {e.detail}[/red]")
         raise e
@@ -419,6 +443,81 @@ async def api_summarize_website(request: SummarizeRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="An unexpected server error occurred.")
+
+@app.post("/summarize/stream")
+async def api_summarize_website_stream(request: SummarizeRequest):
+    console.print(f"Received streaming request: URL='{request.url}', Provider='{request.llm_provider}', Model='{request.model_name}' HasAPIKey={'Yes' if request.api_key else 'No'}, BaseURL: {request.base_url}")
+    
+    async def generate_stream():
+        try:
+            import time
+            start_time = time.time()
+            
+            # First, scrape the website
+            website = await Website.create(request.url)
+            
+            if "Could not scrape content" in website.text:
+                yield f"data: {json.dumps({'error': f'Failed to process website content from: {website.url}'})}\n\n"
+                return
+
+            system_prompt_dict = summarizer_service._get_system_prompt()
+            user_prompt_dict = summarizer_service._get_user_prompt(website)
+
+            if request.llm_provider == "openai" or request.llm_provider == "deepseek":
+                if not request.api_key:
+                    yield f"data: {json.dumps({'error': 'API key is required for OpenAI.'})}\n\n"
+                    return
+                
+                effective_model = request.model_name or "deepseek-chat" if request.llm_provider == "deepseek" else "gpt-4o-mini"
+                client = AsyncOpenAI(api_key=request.api_key, base_url=request.base_url if request.llm_provider == "openai" else "https://api.deepseek.com")
+                messages_for_openai = [system_prompt_dict, user_prompt_dict]
+                
+                try:
+                    stream = await client.chat.completions.create(
+                        model=effective_model,
+                        messages=messages_for_openai,
+                        temperature=0.2,
+                        max_tokens=1024,
+                        stream=True
+                    )
+                    
+                    async for chunk in stream:
+                        if chunk.choices[0].delta.content is not None:
+                            yield f"data: {json.dumps({'content': chunk.choices[0].delta.content.replace('markdown', '')})}\n\n"
+                    
+                    processing_time = f"{time.time() - start_time:.1f} seconds"
+                    yield f"data: {json.dumps({'done': True, 'metadata': {'url': request.url, 'title': website.title, 'provider': request.llm_provider, 'model': effective_model, 'processing_time': processing_time}})}\n\n"
+                    
+                except Exception as e:
+                    yield f"data: {json.dumps({'error': f'Error during OpenAI streaming: {str(e)}'})}\n\n"
+            
+            else:
+                # For non-OpenAI providers, fall back to regular summarization
+                summary_text = await summarizer_service.summarize(
+                    website_url=request.url,
+                    llm_provider=request.llm_provider,
+                    api_key=request.api_key,
+                    model_name=request.model_name,
+                    base_url=request.base_url
+                )
+                yield f"data: {json.dumps({'content': summary_text})}\n\n"
+                
+                processing_time = f"{time.time() - start_time:.1f} seconds"
+                yield f"data: {json.dumps({'done': True, 'metadata': {'url': request.url, 'title': website.title, 'provider': request.llm_provider, 'model': request.model_name or 'default model', 'processing_time': processing_time}})}\n\n"
+                
+        except Exception as e:
+            yield f"data: {json.dumps({'error': f'Unexpected error: {str(e)}'})}\n\n"
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/plain",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Content-Type": "text/event-stream",
+        }
+    )
+
 # Add a health check endpoint
 @app.get("/health")
 async def health_check():
