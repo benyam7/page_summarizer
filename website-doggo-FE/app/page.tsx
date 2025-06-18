@@ -169,7 +169,7 @@ export default function Page() {
 
                                 <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-100 to-green-100 dark:from-purple-900/30 dark:to-purple-900/30 rounded-2xl border-2 border-purple-300 dark:border-purple-600">
                                     <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center text-2xl shadow-lg">
-                                        🐕‍🦺
+                                        🐺
                                     </div>
                                     <div>
                                         <p className="font-bold text-amber-900 dark:text-amber-100">
