@@ -11,7 +11,13 @@ import { FetchSteps } from './fetch-steps';
 
 interface SummaryRequest {
     url: string;
-    llm_provider: 'openai' | 'ollama' | 'anthropic' | 'google' | 'groq';
+    llm_provider:
+        | 'openai'
+        | 'ollama'
+        | 'anthropic'
+        | 'google'
+        | 'groq'
+        | 'deepseek';
     api_key: string;
     model_name: string | null;
     base_url: string | null;
@@ -46,7 +52,13 @@ export default function WebDoggoApp() {
     });
 
     const handleBreedChange = (
-        provider: 'openai' | 'ollama' | 'anthropic' | 'google' | 'groq'
+        provider:
+            | 'openai'
+            | 'ollama'
+            | 'anthropic'
+            | 'google'
+            | 'groq'
+            | 'deepseek'
     ) => {
         setRequest((prev) => ({
             ...prev,
@@ -64,6 +76,7 @@ export default function WebDoggoApp() {
             anthropic: 'claude-3-haiku-20240307',
             google: 'gemini-1.5-flash-latest',
             groq: 'llama3-8b-8192',
+            deepseek: 'deepseek-chat',
         };
         return defaults[provider as keyof typeof defaults];
     };
@@ -75,6 +88,7 @@ export default function WebDoggoApp() {
         setRequest(formData);
         setCurrentStep(0);
         console.log('formData', formData);
+
         try {
             // Simulate the different steps of the fetching process
             const steps = [
@@ -90,23 +104,15 @@ export default function WebDoggoApp() {
                 setCurrentStep(i + 1);
             }
 
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_SUMMARIZER_API_URL}/summarize`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData),
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            // Use streaming for OpenAI, regular request for others
+            if (
+                formData.llm_provider === 'openai' ||
+                formData.llm_provider === 'deepseek'
+            ) {
+                await handleStreamingRequest(formData);
+            } else {
+                await handleRegularRequest(formData);
             }
-
-            const data: SummaryResponse = await response.json();
-            setSummaryData(data);
         } catch (err) {
             setError(
                 'Woof! Make sure you have entered correct API key and model name. Let&apos;s try again! 🐕'
@@ -114,6 +120,122 @@ export default function WebDoggoApp() {
         } finally {
             setIsFetching(false);
         }
+    };
+
+    const handleStreamingRequest = async (formData: SummaryRequest) => {
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_SUMMARIZER_API_URL}/summarize/stream`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+            throw new Error('No response body');
+        }
+
+        let summaryText = '';
+        const decoder = new TextDecoder();
+
+        // Initialize summary data with empty content
+        setSummaryData({
+            summary: '',
+            metadata: {
+                url: formData.url,
+                title: 'Loading...',
+                provider: formData.llm_provider,
+                model: formData.model_name || 'default model',
+                processing_time: 'Streaming...',
+            },
+        });
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+
+                            if (data.error) {
+                                setError(data.error);
+                                return;
+                            }
+
+                            if (data.content) {
+                                summaryText += data.content;
+                                // Update the summary in real-time
+                                setSummaryData((prev) =>
+                                    prev
+                                        ? {
+                                              ...prev,
+                                              summary: summaryText,
+                                          }
+                                        : null
+                                );
+                            }
+
+                            if (data.done) {
+                                // Final update with complete metadata
+                                setSummaryData({
+                                    summary: summaryText,
+                                    metadata: data.metadata || {
+                                        url: formData.url,
+                                        title: 'Summary Complete',
+                                        provider: formData.llm_provider,
+                                        model:
+                                            formData.model_name ||
+                                            'default model',
+                                        processing_time: 'Streamed',
+                                    },
+                                });
+                                return;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing SSE data:', e);
+                        }
+                    }
+                }
+            }
+        } finally {
+            reader.releaseLock();
+        }
+    };
+
+    const handleRegularRequest = async (formData: SummaryRequest) => {
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_SUMMARIZER_API_URL}/summarize`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            }
+        );
+
+        console.log('response', response.status);
+        if (!response.ok) {
+            console.log('response', await response.text());
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data: SummaryResponse = await response.json();
+        setSummaryData(data);
     };
 
     const handleBackToForm = () => {

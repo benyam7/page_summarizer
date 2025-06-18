@@ -16,7 +16,13 @@ import { motion } from 'framer-motion';
 
 interface SummaryRequest {
     url: string;
-    llm_provider: 'openai' | 'ollama' | 'anthropic' | 'google' | 'groq';
+    llm_provider:
+        | 'openai'
+        | 'ollama'
+        | 'anthropic'
+        | 'google'
+        | 'groq'
+        | 'deepseek';
     api_key: string;
     model_name: string | null;
     base_url: string | null;
@@ -34,6 +40,7 @@ const DEFAULT_MODELS = {
     anthropic: 'claude-3-haiku-20240307',
     google: 'gemini-1.5-flash-latest',
     groq: 'llama3-8b-8192',
+    deepseek: 'deepseek-chat',
 };
 
 export const DoggoForm = ({
