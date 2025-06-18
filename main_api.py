@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware # For allowing Next.js to cal
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from rich.console import Console
-from rich.markdown import Markdown # You might not use Rich directly in API responses
 from openai import OpenAI, AsyncOpenAI
 from openai.types.chat import ChatCompletion
 from typing import Optional, Union, Dict, List, Literal
@@ -21,8 +20,8 @@ import json
 
 console = Console() # For server-side logging
 
-# --- Your Config, Website, LlmSummarizer classes go here ---
-# Minor modifications needed for Website class
+
+
 
 class Config:
     def __init__(self, filename: str = ".env"):
@@ -45,7 +44,7 @@ class Website:
     __title: str
     __text: str
 
-    # ... (properties remain the same) ...
+
     @property
     def url(self) -> str:
         return self.__url
@@ -58,8 +57,7 @@ class Website:
     def text(self) -> str:
         return self.__text
 
-    # CRITICAL CHANGE: __scrape must be an async method that can be awaited
-    # It should not call asyncio.run() itself.
+    
     async def scrape_async(self) -> None:
         console.print("Started scraping")
         browser = None
@@ -77,8 +75,8 @@ class Website:
                             '--disable-gpu',           # Usually not needed for headless
                             # Add other essential args only if proven necessary
                         ],
-                        # ignoreHTTPSErrors=True, # Be cautious with this in production
-                        executablePath='/usr/bin/chromium' # This is good
+
+                        executablePath='/usr/bin/chromium' 
                     )
             page = await browser.newPage()
             await stealth(page)
@@ -143,7 +141,6 @@ class Website:
                 await browser.close()
 
     # The constructor now needs to be async or call an async method
-    # We'll make an async factory method instead for clarity
     @classmethod
     async def create(cls, url: str):
         instance = cls()
@@ -170,8 +167,11 @@ class LlmSummarizer:
         return {
             "role": "system",
             "content": (
-                "You are an assistant that analyzes the contents of a website "
-                "and provides a short summary, ignoring the text that might be navigation-related. "
+                # "You are an assistant that analyzes the contents of a website "
+                # "and provides a short summary, ignoring the text that might be navigation-related. "
+                "You are faithful companion for fetching AI-powered website summaries!" 🐾
+
+""
                 "Respond in markdown and be concise."
             )
         }
@@ -295,10 +295,10 @@ class LlmSummarizer:
 
                 # Non-streaming generation
                 # Note: The google-generativeai SDK's generate_content is synchronous.
-                # To make it async, you'd typically run it in a thread pool executor with FastAPI.
+                # To make it async, we need to run it in a thread pool executor with FastAPI.
                 loop = asyncio.get_event_loop()
                 try:
-                    # For safety config, see Google AI Studio docs. Example:
+                    # For safety config,
                     safety_settings = [
                         {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
                         {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
@@ -390,7 +390,7 @@ app = FastAPI()
 # Configure CORS with more specific settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific domains
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -522,6 +522,3 @@ async def api_summarize_website_stream(request: SummarizeRequest):
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
-
-# To run this locally (for testing the API):
-# uvicorn main_api:app --reload
