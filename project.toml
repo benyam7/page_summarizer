@@ -1,0 +1,3 @@
+[google.runtime.engine]
+name = "python"
+version = "3.12" 
